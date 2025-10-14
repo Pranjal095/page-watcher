@@ -1,0 +1,76 @@
+name: Watch Page Monitor
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 15 minutes (adjust if you want)
+  workflow_dispatch: {}      # allows manual runs
+
+permissions:
+  contents: write            # allow commits/pushes back to repo
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: Ensure snapshot file exists
+        run: |
+          mkdir -p "$(dirname snapshot.txt)" || true
+          if [ ! -f snapshot.txt ]; then
+            echo "" > snapshot.txt
+            git add snapshot.txt
+            git commit -m "Create initial snapshot placeholder" || true
+          fi
+
+      - name: Run watcher
+        env:
+          # supply the required runtime variables from repository secrets
+          URL: ${{ secrets.URL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          TO_EMAIL: ${{ secrets.TO_EMAIL }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+        run: |
+          set -euo pipefail
+          python3 script.py
+
+      - name: Show git status (debug)
+        run: |
+          echo "Git status:"
+          git status --porcelain || true
+          git --no-pager diff --name-only || true
+
+      - name: Commit & push snapshot changes
+        # only run if there are changes
+        if: ${{ steps.checkout.outcome == 'success' }}
+        run: |
+          # configure Git user for the commit
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git add snapshot.txt || true
+            git commit -m "Update snapshot (GitHub Actions): $(date -u +"%Y-%m-%dT%H:%M:%SZ")" || echo "No changes to commit"
+            # push back to the branch that triggered the workflow
+            BRANCH_NAME="${GITHUB_REF##*/}"
+            git push origin "HEAD:${BRANCH_NAME}"
+          else
+            echo "No changes to push"
+          fi
