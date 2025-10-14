@@ -58,19 +58,14 @@ jobs:
           git --no-pager diff --name-only || true
 
       - name: Commit & push snapshot changes
-        # only run if there are changes
-        if: ${{ steps.checkout.outcome == 'success' }}
         run: |
-          # configure Git user for the commit
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           if [ -n "$(git status --porcelain)" ]; then
-            git add snapshot.txt || true
+            git add snapshot.txt
             git commit -m "Update snapshot (GitHub Actions): $(date -u +"%Y-%m-%dT%H:%M:%SZ")" || echo "No changes to commit"
-            # push back to the branch that triggered the workflow
-            BRANCH_NAME="${GITHUB_REF##*/}"
-            git push origin "HEAD:${BRANCH_NAME}"
+            git push origin HEAD:"${GITHUB_REF_NAME}"
           else
             echo "No changes to push"
           fi
