@@ -25,6 +25,9 @@ Listing of High Prep PS
 Quant/Algorithmic Trading
 Ebullient Securities
 View PDF
+STOL Aircraft Aerodynamics
+LAT Aerospace
+View PDF
 Mid Prep Problem Statements
 These are the competitions that involve demonstrations or presentations that happen during the meet. This may require the preparation of some prototypes, submissions, etc., from the contingents as per the problem statement.
 The problem-solving will require a sustained effort of anywhere between
